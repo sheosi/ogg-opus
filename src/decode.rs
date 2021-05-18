@@ -6,6 +6,32 @@ use byteorder::{LittleEndian, ByteOrder};
 use ogg::{Packet, PacketReader};
 use magnum_opus::{Decoder as OpusDec};
 
+//--- Final range  things ------------------------------------------------------
+
+#[cfg(test)]
+use std::cell::RefCell;
+
+#[cfg(test)]
+thread_local! {
+    static LAST_FINAL_RANGE: RefCell<u32> = RefCell::new(0);
+}
+
+#[cfg(test)]
+fn set_final_range(r:u32) {
+    LAST_FINAL_RANGE.with(|f|*f.borrow_mut() = r);
+}
+
+// Just here so that it can be used in the function
+#[cfg(not(test))]
+fn set_final_range(_:u32) {}
+
+#[cfg(test)]
+pub(crate) fn get_final_range() -> u32 {
+    LAST_FINAL_RANGE.with(|f|*f.borrow())
+}
+
+//--- Code ---------------------------------------------------------------------
+
 pub struct PlayData {
     pub channels: u16
 }
@@ -13,7 +39,7 @@ pub struct PlayData {
 /**Reads audio from Ogg Opus, note: it only can read from the ones produced 
 by itself, this is not ready for anything more, third return is final range just
 available while testing, otherwise it is a 0*/
-pub fn decode<T: Read + Seek, const TARGET_SPS: u32>(data: T) -> Result<(Vec<i16>, PlayData, u32), Error> {
+pub fn decode<T: Read + Seek, const TARGET_SPS: u32>(data: T) -> Result<(Vec<i16>, PlayData), Error> {
     // Data
     const MAX_FRAME_SAMPLES: usize = 5760; // According to opus_decode docs
     const MAX_FRAME_SIZE: usize = MAX_FRAME_SAMPLES * (MAX_NUM_CHANNELS as usize); // Our buffer will be i16 so, don't convert to bytes
@@ -111,8 +137,7 @@ pub fn decode<T: Read + Seek, const TARGET_SPS: u32>(data: T) -> Result<(Vec<i16
 
     }
 
-    let final_range= if cfg!(test) {decoder.get_final_range()?}
-                         else{0};
+    if cfg!(test) {set_final_range(decoder.get_final_range().unwrap())};
 
-    Ok( (buffer, play_data, final_range))
+    Ok( (buffer, play_data))
 }

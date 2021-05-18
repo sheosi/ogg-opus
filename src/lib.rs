@@ -49,8 +49,10 @@ mod tests {
         #[test]
         fn dec_enc_empty() {
             let audio = Vec::new();
-            let (opus,enc_fin_range) = crate::encode::<16000>(&audio).unwrap();
-            let (audio2, _,dec_fin_range) = crate::decode::<_,16000>(Cursor::new(opus)).unwrap();
+            let opus = crate::encode::<16000, 1>(&audio).unwrap();
+            let enc_fin_range = crate::encode::get_final_range();
+            let (audio2, _) = crate::decode::<_,16000>(Cursor::new(opus)).unwrap();
+            let dec_fin_range = crate::decode::get_final_range();
             assert_eq!(audio.len(), audio2.len()); // Should be the same, empty
             assert_eq!(enc_fin_range, dec_fin_range);
         }
@@ -58,8 +60,10 @@ mod tests {
         #[test]
         fn dec_enc_recording_big() {
             let audio = read_file_i16("test_assets/big.wav");
-            let (opus,enc_fin_range) = crate::encode::<16000>(&audio).unwrap();
-            let (a2,_,dec_fin_range) = crate::decode::<_,16000>(Cursor::new(opus)).unwrap();
+            let opus = crate::encode::<16000, 1>(&audio).unwrap();
+            let enc_fin_range = crate::encode::get_final_range();
+            let (a2,_) = crate::decode::<_,16000>(Cursor::new(opus)).unwrap();
+            let dec_fin_range = crate::decode::get_final_range();
             assert_eq!(dec_fin_range, enc_fin_range);
             assert_eq!(audio.len(), a2.len());
         }
@@ -67,8 +71,10 @@ mod tests {
         #[test]
         fn dec_enc_recording_small() {
             let audio = read_file_i16("test_assets/small.wav");
-            let (opus, enc_fin_range) = crate::encode::<16000>(&audio).unwrap();
-            let (a2, _, dec_fin_range) = crate::decode::<_, 16000>(Cursor::new(opus)).unwrap();
+            let opus = crate::encode::<16000, 1>(&audio).unwrap();
+            let enc_fin_range = crate::encode::get_final_range();
+            let (a2, _) = crate::decode::<_, 16000>(Cursor::new(opus)).unwrap();
+            let dec_fin_range = crate::decode::get_final_range();
             assert_eq!(dec_fin_range, enc_fin_range);
             assert_eq!(audio.len(), a2.len());
         }
@@ -79,10 +85,19 @@ mod tests {
         // raw audio as vorbis is lossy)
         fn dec_enc_recording_whole() {
             let audio = read_file_i16("test_assets/small.wav");
-            let (opus, enc_fr1) = crate::encode::<16000>(&audio).unwrap();
-            let (audio2, _, dec_fr1) = crate::decode::<_, 16000>(Cursor::new(opus)).unwrap();
-            let (opus2, enc_fr2) = crate::encode::<16000>(&audio2).unwrap();
-            let (audio3, _, dec_fr2) = crate::decode::<_, 16000>(Cursor::new(opus2)).unwrap();
+            
+            let opus = crate::encode::<16000, 1>(&audio).unwrap();
+            let enc_fr1 = crate::encode::get_final_range();
+
+            let (audio2, _) = crate::decode::<_, 16000>(Cursor::new(opus)).unwrap();
+            let dec_fr1 = crate::decode::get_final_range();
+
+            let opus2 = crate::encode::<16000, 1>(&audio2).unwrap();
+            let enc_fr2 = crate::encode::get_final_range();
+
+            let (audio3, _) = crate::decode::<_, 16000>(Cursor::new(opus2)).unwrap();
+            let dec_fr2 = crate::decode::get_final_range();
+
             assert_eq!(audio2.len(), audio3.len());
             assert_eq!(enc_fr1, dec_fr1);
             assert_eq!(enc_fr2, dec_fr2);

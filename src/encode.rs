@@ -9,6 +9,32 @@ use ogg::PacketWriter;
 use magnum_opus::{Bitrate, Encoder as OpusEnc};
 use rand::Rng;
 
+//--- Final range  things ------------------------------------------------------
+
+#[cfg(test)]
+use std::cell::RefCell;
+
+#[cfg(test)]
+thread_local! {
+    static LAST_FINAL_RANGE: RefCell<u32> = RefCell::new(0);
+}
+
+#[cfg(test)]
+fn set_final_range(r:u32) {
+    LAST_FINAL_RANGE.with(|f|*f.borrow_mut() = r);
+}
+
+// Just here so that it can be used in the function
+#[cfg(not(test))]
+fn set_final_range(_:u32) {}
+
+#[cfg(test)]
+pub(crate) fn get_final_range() -> u32 {
+    LAST_FINAL_RANGE.with(|f|*f.borrow())
+}
+
+//--- Code ---------------------------------------------------------------------
+
 const VER: &str = std::env!("CARGO_PKG_VERSION");
 
 const fn to_samples<const S_PS: u32>(ms: u32) -> usize {
@@ -37,7 +63,7 @@ const fn opus_channels(val: u8) -> magnum_opus::Channels{
     }
 }
 
-pub fn encode<const S_PS: u32>(audio: &[i16]) -> Result<(Vec<u8>, u32), Error> {
+pub fn encode<const S_PS: u32, const NUM_CHANNELS: u8>(audio: &[i16]) -> Result<Vec<u8>, Error> {
     //NOTE: In the future the S_PS const generic will let us use const on a lot 
     // of things, until then we need to use variables
 
@@ -45,10 +71,6 @@ pub fn encode<const S_PS: u32>(audio: &[i16]) -> Result<(Vec<u8>, u32), Error> {
 
     // More frame time, sligtly less overhead more problematic packet loses,
     // a frame time of 20ms is considered good enough for most applications
-
-
-    // Config
-    const NUM_CHANNELS: u8 = 1;
     
     // Data
     const FRAME_TIME_MS: u32 = 20;
@@ -91,7 +113,7 @@ pub fn encode<const S_PS: u32>(audio: &[i16]) -> Result<(Vec<u8>, u32), Error> {
         calc_sr_u64(val as u64, S_PS, OGG_OPUS_SPS)
     }
 
-    const OPUS_HEAD: [u8; 19] = [
+    let opus_head: [u8; 19] = [
         b'O', b'p', b'u', b's', b'H', b'e', b'a', b'd', // Magic header
         1, // Version number, always 1
         NUM_CHANNELS, // Channels
@@ -126,7 +148,7 @@ pub fn encode<const S_PS: u32>(audio: &[i16]) -> Result<(Vec<u8>, u32), Error> {
         }
     }
 
-    let mut head = OPUS_HEAD;
+    let mut head = opus_head;
     LittleEndian::write_u16(&mut head[10..12], skip_48 as u16); // Write pre-skip
     LittleEndian::write_u32(&mut head[12..16], S_PS); // Write Samples per second
 
@@ -229,8 +251,7 @@ pub fn encode<const S_PS: u32>(audio: &[i16]) -> Result<(Vec<u8>, u32), Error> {
             
         }
 
-    let final_range = if cfg!(test) {opus_encoder.get_final_range()?}
-                          else {0};
+    if cfg!(test) {set_final_range(opus_encoder.get_final_range().unwrap())}
 
-    Ok((buffer, final_range))
+    Ok(buffer)
 }
