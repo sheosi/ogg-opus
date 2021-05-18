@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["sheosi <sertorbe@gmail.com>"]
 edition = "2018"
 license = "MIT"
-description = "A decoder for Ogg Opus"
+description = "A decoder/encoder for Ogg Opus"
 repository = "https://github.com/sheosi/ogg-opus"
 
 exclude = ["test_assets/*"] # Don't upload files for testing

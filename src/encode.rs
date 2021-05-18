@@ -81,7 +81,7 @@ pub fn encode<const S_PS: u32, const NUM_CHANNELS: u8>(audio: &[i16]) -> Result<
     let frame_size: usize = frame_samples * (NUM_CHANNELS as usize);
 
     // Generate the serial which is nothing but a value to identify a stream, we
-    // will also use the process id so that two lily implementations don't use 
+    // will also use the process id so that two programs don't use 
     // the same serial even if getting one at the same time
     let mut rnd = rand::thread_rng();
     let serial = rnd.gen::<u32>() ^ process::id();
@@ -129,8 +129,7 @@ pub fn encode<const S_PS: u32, const NUM_CHANNELS: u8>(audio: &[i16]) -> Result<
             opus_encoder.encode_vec(&audio[pos_a-skip_us..pos_b-skip_us], MAX_PACKET)
         }
         else {
-            let mut buf = Vec::with_capacity(pos_b-pos_a);
-            buf.resize(pos_b-pos_a, 0);
+            let mut buf = vec![0; pos_b-pos_a];
             if pos_b > skip_us {
                 buf[skip_us - pos_a..].copy_from_slice(&audio[.. pos_b - skip_us]);
             }

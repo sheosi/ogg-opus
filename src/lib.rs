@@ -70,6 +70,8 @@ mod tests {
 
         #[test]
         fn dec_enc_recording_small() {
+            // This file (when added the skip) decodes to exactly 63 20ms 
+            // + a 2.5 ms packet
             let audio = read_file_i16("test_assets/small.wav");
             let opus = crate::encode::<16000, 1>(&audio).unwrap();
             let enc_fin_range = crate::encode::get_final_range();
