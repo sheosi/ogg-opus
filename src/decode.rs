@@ -1,10 +1,10 @@
 use std::io::{Read, Seek};
 
 use crate::Error;
-use crate::common::{calc_sr, calc_sr_u64, OGG_OPUS_SPS, OPUS_MAGIC_HEADER, MAX_NUM_CHANNELS};
+use crate::common::*;
 use byteorder::{LittleEndian, ByteOrder};
 use ogg::{Packet, PacketReader};
-use magnum_opus::{Decoder as OpusDec};
+use audiopus::{coder::{Decoder as OpusDec, GenericCtl}};
 
 //--- Final range  things ------------------------------------------------------
 
@@ -35,6 +35,8 @@ pub(crate) fn get_final_range() -> u32 {
 pub struct PlayData {
     pub channels: u16
 }
+
+pub(crate) const OPUS_MAGIC_HEADER:[u8;8] = [b'O', b'p', b'u', b's', b'H', b'e', b'a', b'd'];
 
 /**Reads audio from Ogg Opus, note: it only can read from the ones produced 
 by itself, this is not ready for anything more, third return is final range just
@@ -85,13 +87,15 @@ pub fn decode<T: Read + Seek, const TARGET_SPS: u32>(data: T) -> Result<(Vec<i16
     let (play_data, dec_data) = check_fp::<TARGET_SPS>(&fp)?;
 
     let chans = match play_data.channels {
-        1 => Ok(magnum_opus::Channels::Mono),
-        2 => Ok(magnum_opus::Channels::Stereo),
+        1 => Ok(audiopus::Channels::Mono),
+        2 => Ok(audiopus::Channels::Stereo),
         _ => Err(Error::MalformedAudio)
     }?;
 
+    let opus_sr = s_ps_to_audiopus(TARGET_SPS)?;
+
     // According to RFC7845 if a device supports 48Khz, decode at this rate
-    let mut decoder =  OpusDec::new(TARGET_SPS, chans)?;
+    let mut decoder =  OpusDec::new(opus_sr, chans)?;
     decoder.set_gain(dec_data.gain)?;
 
     // Vendor and other tags, do a basic check
@@ -115,8 +119,8 @@ pub fn decode<T: Read + Seek, const TARGET_SPS: u32>(data: T) -> Result<(Vec<i16
     let mut rem_skip = dec_data.pre_skip as usize;
     let mut dec_absgsp = 0;
     while let Some(packet) = reader.read_packet()? {
-        let mut temp_buffer = [0; MAX_FRAME_SIZE];
-        let out_size = decoder.decode(&packet.data, &mut temp_buffer, false)?;
+        let mut temp_buffer = [0i16; MAX_FRAME_SIZE];
+        let out_size = decoder.decode(Some(&packet.data), &mut temp_buffer[..], false)?;
         let absgsp = calc_sr_u64(packet.absgp_page(),OGG_OPUS_SPS, TARGET_SPS) as usize;
         dec_absgsp += out_size;
         let trimmed_end = if packet.last_in_stream() && dec_absgsp > absgsp {
@@ -137,7 +141,7 @@ pub fn decode<T: Read + Seek, const TARGET_SPS: u32>(data: T) -> Result<(Vec<i16
 
     }
 
-    if cfg!(test) {set_final_range(decoder.get_final_range().unwrap())};
+    if cfg!(test) {set_final_range(decoder.final_range().unwrap())};
 
     Ok( (buffer, play_data))
 }

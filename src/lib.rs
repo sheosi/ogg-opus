@@ -13,7 +13,7 @@ pub fn is_ogg_opus<T: Read + Seek>(mut d: T) -> bool {
     if let Ok(_) = d.seek(SeekFrom::Start(28)) {
         if let Ok(d) = d.read(&mut buff) {
             if d == 8 {
-                return buff == common::OPUS_MAGIC_HEADER;
+                return buff == decode::OPUS_MAGIC_HEADER;
             }
         }
     }
@@ -26,13 +26,16 @@ pub enum Error {
     MalformedAudio,
 
     #[error("Encoding error")]
-    OpusError(#[from] magnum_opus::Error),
+    OpusError(#[from] audiopus::Error),
 
     #[error("Failed to decode ogg")]
     OggReadError(#[from] ogg::OggReadError),
 
-    #[error("Faile to write in OGG")]
-    OggWriteError(#[from]std::io::Error)
+    #[error("Failed to write in OGG")]
+    OggWriteError(#[from]std::io::Error),
+
+    #[error("Invalid samples per second")]
+    InvalidSps,
 }
 
 #[cfg(test)]

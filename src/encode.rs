@@ -2,11 +2,11 @@ use std::cmp::min;
 use std::process;
 
 use crate::Error;
-use crate::common::{calc_sr, calc_sr_u64, OGG_OPUS_SPS, MAX_NUM_CHANNELS};
+use crate::common::*;
 
 use byteorder::{LittleEndian, ByteOrder};
 use ogg::PacketWriter;
-use magnum_opus::{Bitrate, Encoder as OpusEnc};
+use audiopus::{Bitrate, coder::{Encoder as OpusEnc, GenericCtl}};
 use rand::Rng;
 
 //--- Final range  things ------------------------------------------------------
@@ -50,16 +50,16 @@ const fn calc_fr_size(us: u32, channels:u8, sps:u32) -> usize {
 }
 
 
-const fn opus_channels(val: u8) -> magnum_opus::Channels{
+const fn opus_channels(val: u8) -> audiopus::Channels{
     if val == 0 {
         // Never should be 0
-        magnum_opus::Channels::Mono
+        audiopus::Channels::Mono
     }
     else if val == 1 {
-       magnum_opus::Channels::Mono
+       audiopus::Channels::Mono
     }
     else {
-       magnum_opus::Channels::Stereo
+       audiopus::Channels::Stereo
     }
 }
 
@@ -88,9 +88,13 @@ pub fn encode<const S_PS: u32, const NUM_CHANNELS: u8>(audio: &[i16]) -> Result<
     let mut buffer: Vec<u8> = Vec::new();
     
     let mut packet_writer = PacketWriter::new(&mut buffer);
-    let mut opus_encoder = OpusEnc::new(S_PS, opus_channels(NUM_CHANNELS), magnum_opus::Application::Audio)?;
-    opus_encoder.set_bitrate(Bitrate::Bits(24000))?;
-    let skip = opus_encoder.get_lookahead().unwrap() as u16;
+
+    let opus_sr = s_ps_to_audiopus(S_PS)?;
+
+    let mut opus_encoder = OpusEnc::new(opus_sr, opus_channels(NUM_CHANNELS), audiopus::Application::Audio)?;
+    opus_encoder.set_bitrate(Bitrate::BitsPerSecond(24000))?;
+
+    let skip = opus_encoder.lookahead().unwrap() as u16;
     let skip_us = skip as usize;
     let tot_samples = audio.len() + skip_us;
     let skip_48 = calc_sr(
@@ -124,18 +128,24 @@ pub fn encode<const S_PS: u32, const NUM_CHANNELS: u8>(audio: &[i16]) -> Result<
         // If Channel map != 0, here should go channel mapping table
     ];
 
+    fn encode_vec(opus_encoder: &mut OpusEnc, audio: &[i16]) -> Result<Box<[u8]>, Error> {
+        let mut output: Vec<u8> = vec![0; MAX_PACKET];
+		let result = opus_encoder.encode(audio, output.as_mut_slice())?;
+		output.truncate(result);
+		Ok(output.into_boxed_slice())
+    }
+
     fn encode_with_skip(opus_encoder: &mut OpusEnc, audio: &[i16], pos_a: usize, pos_b: usize, skip_us: usize) -> Result<Box<[u8]>, Error> {
-        let res = if pos_a > skip_us {
-            opus_encoder.encode_vec(&audio[pos_a-skip_us..pos_b-skip_us], MAX_PACKET)
+        if pos_a > skip_us {
+            encode_vec(opus_encoder, &audio[pos_a-skip_us..pos_b-skip_us])
         }
         else {
             let mut buf = vec![0; pos_b-pos_a];
             if pos_b > skip_us {
                 buf[skip_us - pos_a..].copy_from_slice(&audio[.. pos_b - skip_us]);
             }
-            opus_encoder.encode_vec(&buf, MAX_PACKET)
-        };
-        Ok(res?.into_boxed_slice())
+            encode_vec(opus_encoder, &buf)
+        }
     }
 
     fn is_end_of_stream(pos: usize, max: usize) -> ogg::PacketWriteEndInfo {
@@ -152,7 +162,7 @@ pub fn encode<const S_PS: u32, const NUM_CHANNELS: u8>(audio: &[i16]) -> Result<
     LittleEndian::write_u32(&mut head[12..16], S_PS); // Write Samples per second
 
     let mut opus_tags : Vec<u8> = Vec::with_capacity(60);
-    let vendor_str = format!("{}, ogg-opus {}", magnum_opus::version(), VER);
+    let vendor_str = format!("ogg-opus {}", VER);
     opus_tags.extend(b"OpusTags");
     let mut len_bf = [0u8;4];
     LittleEndian::write_u32(&mut len_bf, vendor_str.len() as u32);
@@ -192,8 +202,7 @@ pub fn encode<const S_PS: u32, const NUM_CHANNELS: u8>(audio: &[i16]) -> Result<
     }
 
     fn encode_no_skip(opus_encoder: &mut OpusEnc, audio: &[i16], start: usize, frame_size : usize) -> Result<Box<[u8]>, Error> {
-        let temp_buffer = opus_encoder.encode_vec(&audio[start .. start + frame_size], MAX_PACKET)?;
-        Ok(temp_buffer.to_owned().into_boxed_slice())
+        encode_vec(opus_encoder, &audio[start .. start + frame_size])
     }
 
     // Try to add as less of empty audio as possible, first everything into
@@ -250,7 +259,7 @@ pub fn encode<const S_PS: u32, const NUM_CHANNELS: u8>(audio: &[i16]) -> Result<
             
         }
 
-    if cfg!(test) {set_final_range(opus_encoder.get_final_range().unwrap())}
+    if cfg!(test) {set_final_range(opus_encoder.final_range().unwrap())}
 
     Ok(buffer)
 }
