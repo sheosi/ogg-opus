@@ -1,7 +1,7 @@
 use std::io::{Read, Seek};
 
 use crate::Error;
-use crate::common::{calc_sr, calc_sr_u64, OGG_OPUS_SPS, OPUS_MAGIC_HEADER};
+use crate::common::{calc_sr, calc_sr_u64, OGG_OPUS_SPS, OPUS_MAGIC_HEADER, MAX_NUM_CHANNELS};
 use byteorder::{LittleEndian, ByteOrder};
 use ogg::{Packet, PacketReader};
 use magnum_opus::{Decoder as OpusDec};
@@ -15,7 +15,6 @@ by itself, this is not ready for anything more, third return is final range just
 available while testing, otherwise it is a 0*/
 pub fn decode<T: Read + Seek, const TARGET_SPS: u32>(data: T) -> Result<(Vec<i16>, PlayData, u32), Error> {
     // Data
-    const MAX_NUM_CHANNELS: u8 = 2;
     const MAX_FRAME_SAMPLES: usize = 5760; // According to opus_decode docs
     const MAX_FRAME_SIZE: usize = MAX_FRAME_SAMPLES * (MAX_NUM_CHANNELS as usize); // Our buffer will be i16 so, don't convert to bytes
 
