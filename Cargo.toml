@@ -12,3 +12,6 @@ magnum-opus = "^0.3"
 byteorder = "^1.3"
 thiserror = "^1.0"
 rand = "^0.8"
+
+[dev-dependencies]
+wav = "^1.0"
