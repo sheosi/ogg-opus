@@ -52,6 +52,7 @@ let (raw, header) = ogg_opus::decode::<_,16000>(Cursor::new(opus)).unwrap();
 * Only supports `i16` (integer of 16 bits) for the raw part.
 * Both mono and stereo are supported but only mono is tested.
 * More channels than stereo are untested and will probably break it.
-* Supports decoding and encoding any sample rate supported by Opus (8k Hz, 16k Hz, 32k Hz and 64k Hz) but only 16k Hz has been tested
+* Supports decoding and encoding any sample rate supported by Opus (8k Hz, 12k Hz, 24k Hz and 64k Hz) but only 16k Hz has been tested
 * Encoding is set to a bitrate of 24k (because of Lily's constraints)
 * There's still some inaccuracies around start and end of audio (can't tell if it's due to the encoder or the decoder)
+* Advanced decode and encoding features (repairables streams, fec and others)
