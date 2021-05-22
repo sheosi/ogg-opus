@@ -168,7 +168,7 @@ pub fn encode<const S_PS: u32, const NUM_CHANNELS: u8>(audio: &[i16]) -> Result<
     LittleEndian::write_u32(&mut len_bf, vendor_str.len() as u32);
     opus_tags.extend(&len_bf);
     opus_tags.extend(vendor_str.bytes());
-    opus_tags.extend(&[0]); // No user comments
+    opus_tags.extend(&[0u8;4]); // No user comments
 
     packet_writer.write_packet(Box::new(head), serial, ogg::PacketWriteEndInfo::EndPage, 0)?;
     packet_writer.write_packet(opus_tags.into_boxed_slice(), serial, ogg::PacketWriteEndInfo::EndPage, 0)?;
