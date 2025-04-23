@@ -11,7 +11,6 @@ use audiopus::{
 };
 use byteorder::{ByteOrder, LittleEndian};
 use ogg::PacketWriter;
-use rand::Rng;
 
 //--- Final range  things ------------------------------------------------------
 
@@ -92,7 +91,7 @@ pub fn encode<const S_PS: u32, const NUM_CHANNELS: u8>(audio: &[i16]) -> Result<
     // Generate the serial which is nothing but a value to identify a stream, we
     // will also use the process id so that two programs don't use
     // the same serial even if getting one at the same time
-    let serial = rand::thread_rng().gen::<u32>() ^ process::id();
+    let serial = rand::random::<u32>() ^ process::id();
 
     let mut opus_encoder = OpusEnc::new(
         opus_sr,
