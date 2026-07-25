@@ -15,7 +15,7 @@ exclude = ["test_assets/*"] # Don't upload files for testing
 ogg = "^0.9.2"
 audiopus = "^0.3.0-rc.0"
 thiserror = "^2.0"
-rand = { version = "^0.9", default-features = false, features = ["thread_rng"] }
+rand = { version = "^0.10", default-features = false, features = ["thread_rng"] }
 
 [dev-dependencies]
 wav = "^1.0"
