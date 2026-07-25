@@ -8,7 +8,11 @@ pub(crate) const MAX_FRAME_SAMPLES: usize = 5760; // According to opus_decode do
 pub(crate) const MAX_FRAME_SIZE: usize = MAX_FRAME_SAMPLES * (MAX_NUM_CHANNELS as usize); // Our buffer will be i16 so, don't convert to bytes
 pub(crate) const FRAME_TIME_MS: u32 = 20;
 pub(crate) const MAX_PACKET: usize = 4000; // Maximum theorical recommended by Opus
-pub(crate) const MIN_FRAME_MICROS: u32 = 25;
+// Opus only accepts frames of 2.5/5/10/20/40/60 ms, so frame lengths are kept
+// in tenths of a millisecond to stay integral.
+pub(crate) const MIN_FRAME_TENTHS_MS: u32 = 25;
+// Balance between quality, speed and size, especially for Telegram.
+pub(crate) const BITRATE_BPS: u32 = 24000;
 pub(crate) const VENDOR_STR: &str = concat!("ogg-opus", " ", std::env!("CARGO_PKG_VERSION"));
 pub(crate) const VENDOR_STR_LEN: [u8; 4] = (VENDOR_STR.len() as u32).to_le_bytes();
 pub(crate) const VENDOR_STR_BYTES: &[u8] = VENDOR_STR.as_bytes();
