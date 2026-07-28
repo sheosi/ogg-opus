@@ -10,7 +10,7 @@ ogg-opus = "^0.1"
 
 ## Minimum Rust version
 
-Since we use `const generics`, the minimum version of [Rust](https://www.rust-lang.org/) is [1.51](https://blog.rust-lang.org/2021/03/25/Rust-1.51.0.html)
+Since we use `inline const expressions`, the minimum version of [Rust](https://www.rust-lang.org/) is [1.79](https://blog.rust-lang.org/2024/06/13/Rust-1.79.0.html)
 
 # Example
 
